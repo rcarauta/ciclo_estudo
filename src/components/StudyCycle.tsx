@@ -12,9 +12,17 @@ import {
 import { motion } from 'motion/react';
 import { cn } from '@/src/lib/utils';
 import { useStudy } from '../StudyContext';
+import { toast } from 'sonner';
 
 export default function StudyCycle() {
   const { data, reformulateCycle, startSession } = useStudy();
+
+  const handleRebalance = () => {
+    reformulateCycle();
+    toast.success('Ciclo rebalanceado com sucesso!', {
+      description: 'O algoritmo priorizou as matérias com maior taxa de erro e menor progresso.'
+    });
+  };
 
   const getPerformanceColor = (correct: number, total: number) => {
     if (total === 0) return 'text-secondary';
@@ -101,7 +109,7 @@ export default function StudyCycle() {
           </h2>
         </div>
         <button 
-          onClick={reformulateCycle}
+          onClick={handleRebalance}
           className="flex items-center gap-2 px-6 py-3 bg-surface-container-highest rounded-xl text-sm font-bold hover:bg-surface-container-high transition-all"
         >
           <RefreshCw size={18} className="text-primary" />

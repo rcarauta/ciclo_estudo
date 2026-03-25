@@ -231,38 +231,52 @@ export const StudyProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const reformulateCycle = () => {
-    // Logic: Subjects with higher error rate get more weight
-    const subjectPerformance = data.subjects.map(subject => {
-      let total = 0;
-      let correct = 0;
+    if (data.subjects.length === 0) return;
+
+    // Logic: Balance based on difficulty (error rate) and urgency (completion)
+    const subjectMetrics = data.subjects.map(subject => {
+      let totalQuestions = 0;
+      let correctQuestions = 0;
       
       subject.topics.forEach(topic => {
         if (topic.questions) {
-          total += topic.questions.total;
-          correct += topic.questions.correct;
+          totalQuestions += topic.questions.total;
+          correctQuestions += topic.questions.correct;
         }
         topic.subTopics.forEach(sub => {
           if (sub.questions) {
-            total += sub.questions.total;
-            correct += sub.questions.correct;
+            totalQuestions += sub.questions.total;
+            correctQuestions += sub.questions.correct;
           }
         });
       });
 
-      const accuracy = total > 0 ? (correct / total) : 1; // 1 means no errors or no questions
-      const errorRate = 1 - accuracy;
+      const studiedTopics = subject.topics.filter(t => t.status === 'studied').length;
+      const mastery = subject.topics.length > 0 ? studiedTopics / subject.topics.length : 0;
+      
+      // Difficulty score: if no questions, assume 40% difficulty as baseline
+      // If they have questions, use the actual error rate
+      const errorRate = totalQuestions > 0 ? (1 - (correctQuestions / totalQuestions)) : 0.4;
+      
+      // Urgency score: subjects with less mastery get more attention (but not too much more)
+      const urgency = 1 - (mastery * 0.5); // Mastery reduces urgency but doesn't eliminate it
+
+      // Final priority score: 70% difficulty, 30% urgency
+      // Add a base constant of 0.2 to ensure every subject gets a minimum weight
+      const priorityScore = (errorRate * 0.7) + (urgency * 0.3) + 0.2;
       
       return {
         subjectId: subject.id,
-        errorRate: Math.max(0.1, errorRate) // Minimum weight of 0.1
+        priorityScore
       };
     });
 
-    const totalErrorRate = subjectPerformance.reduce((acc, curr) => acc + curr.errorRate, 0);
-    
-    const newCycle: StudyCycleItem[] = subjectPerformance.map(perf => ({
-      subjectId: perf.subjectId,
-      weight: Math.round((perf.errorRate / totalErrorRate) * 120) // Distribute 120 minutes proportionally
+    const totalPriority = subjectMetrics.reduce((acc, curr) => acc + curr.priorityScore, 0);
+    const totalCycleMinutes = 300; // 5 hours total cycle distribution
+
+    const newCycle: StudyCycleItem[] = subjectMetrics.map(metric => ({
+      subjectId: metric.subjectId,
+      weight: Math.max(30, Math.round((metric.priorityScore / totalPriority) * totalCycleMinutes)) // Min 30 mins per subject
     })).sort((a, b) => b.weight - a.weight);
 
     setData(prev => ({ ...prev, cycle: newCycle }));

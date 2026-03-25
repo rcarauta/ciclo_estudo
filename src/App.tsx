@@ -14,6 +14,7 @@ import Settings from './components/Settings';
 import Support from './components/Support';
 import { View } from './types';
 import { StudyProvider } from './StudyContext';
+import { Toaster } from 'sonner';
 
 export default function App() {
   const [currentView, setCurrentView] = useState<View>('dashboard');
@@ -41,6 +42,7 @@ export default function App() {
 
   return (
     <StudyProvider>
+      <Toaster position="top-right" richColors />
       <Layout currentView={currentView} onViewChange={setCurrentView}>
         {renderView()}
       </Layout>
